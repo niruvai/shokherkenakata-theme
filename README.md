@@ -14,3 +14,7 @@ Appearance → Customize → **Shokher Theme** (colors, hotline, Facebook/WhatsA
 Menus: *Category Bar (Desktop)*, *Mobile Menu*, *Footer – Company*.
 
 Demo product images are in `demo/img/` (products tagged `demo` can be deleted any time).
+
+## Shokher Shop Manager plugin
+Lives in `plugins/shokher-manager/`. cPanel **Deploy HEAD Commit** (uses `.cpanel.yml`) copies it to
+`wp-content/plugins/shokher-manager/`. Then activate it under Plugins. Admin menu: **Shokher Shop**.

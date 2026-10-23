@@ -1,0 +1,8 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/shokherk/public_html/wp-content/plugins/shokher-manager/
+    - /bin/mkdir -p $DEPLOYPATH
+    - /bin/cp -R plugins/shokher-manager/. $DEPLOYPATH
+    - /bin/chmod 755 $DEPLOYPATH $DEPLOYPATH/assets
+    - /bin/chmod 644 $DEPLOYPATH/shokher-manager.php $DEPLOYPATH/assets/admin.css $DEPLOYPATH/assets/admin.js
