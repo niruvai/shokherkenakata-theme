@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Shokher Shop Manager
  * Description: সহজ দোকান ম্যানেজার – এক পেজে প্রোডাক্ট আপলোড, দাম/অফার/স্টক এডিট, অর্ডার দেখা ও স্ট্যাটাস বদল, ডেলিভারি চার্জ ও ফ্রি ডেলিভারি অফার।
- * Version: 1.0.0
+ * Version: 1.1.0
  * Author: Shokher Kenakata
  * Requires Plugins: woocommerce
  * Requires at least: 6.3
@@ -12,9 +12,11 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'SKM_VER', '1.0.0' );
+define( 'SKM_VER', '1.1.0' );
 define( 'SKM_URL', plugin_dir_url( __FILE__ ) );
 define( 'SKM_CAP', 'edit_products' );
+
+require_once __DIR__ . '/includes/class-stages.php';
 
 final class Shokher_Manager {
 
@@ -162,7 +164,7 @@ final class Shokher_Manager {
 	private static function sales_since( $ts ) {
 		$orders = wc_get_orders( array(
 			'limit'        => -1,
-			'status'       => array( 'wc-processing', 'wc-on-hold', 'wc-completed', 'wc-pending' ),
+			'status'       => array( 'wc-processing', 'wc-on-hold', 'wc-completed', 'wc-pending', 'wc-sk-confirmed', 'wc-sk-packing', 'wc-sk-shipped' ),
 			'date_created' => '>=' . $ts,
 			'return'       => 'objects',
 		) );
@@ -179,7 +181,7 @@ final class Shokher_Manager {
 		$month   = ( new DateTime( 'first day of this month 00:00', $tz ) )->getTimestamp();
 		list( $tc, $ts ) = self::sales_since( $today );
 		list( $mc, $ms ) = self::sales_since( $month );
-		$pending = count( wc_get_orders( array( 'limit' => -1, 'status' => array( 'wc-pending', 'wc-processing', 'wc-on-hold' ), 'return' => 'ids' ) ) );
+		$pending = count( wc_get_orders( array( 'limit' => -1, 'status' => Shokher_Stages::active_statuses(), 'return' => 'ids', 'type' => 'shop_order' ) ) );
 		$low_ids = get_posts( array(
 			'post_type'      => 'product',
 			'post_status'    => 'publish',
@@ -197,7 +199,7 @@ final class Shokher_Manager {
 		<div class="skm-cards">
 			<div class="skm-card"><span>আজকের অর্ডার</span><b><?php echo (int) $tc; ?></b><small><?php echo wp_kses_post( self::money( $ts ) ); ?></small></div>
 			<div class="skm-card"><span>এই মাসের বিক্রি</span><b><?php echo wp_kses_post( self::money( $ms ) ); ?></b><small><?php echo (int) $mc; ?> টি অর্ডার</small></div>
-			<div class="skm-card skm-card-warn"><span>যে অর্ডারগুলো বাকি</span><b><?php echo (int) $pending; ?></b><small><a href="<?php echo esc_url( self::url( 'orders' ) ); ?>">অর্ডার দেখুন →</a></small></div>
+			<div class="skm-card skm-card-warn"><span>চলমান অর্ডার (ডেলিভারি বাকি)</span><b><?php echo (int) $pending; ?></b><small><a href="<?php echo esc_url( self::url( 'orders' ) ); ?>">অর্ডার দেখুন →</a></small></div>
 			<div class="skm-card"><span>মোট প্রোডাক্ট</span><b><?php echo (int) $total_p; ?></b><small><a href="<?php echo esc_url( self::url( 'products' ) ); ?>">সব প্রোডাক্ট →</a></small></div>
 		</div>
 
@@ -692,7 +694,7 @@ final class Shokher_Manager {
 						<td>
 							<select class="skm-in" data-skm-order-status>
 								<?php foreach ( $statuses as $k => $label ) : ?>
-									<option value="<?php echo esc_attr( $k ); ?>" <?php selected( 'wc-' . $o->get_status(), $k ); ?>><?php echo esc_html( $bn[ $k ] ?? $label ); ?></option>
+									<option value="<?php echo esc_attr( $k ); ?>" <?php selected( 'wc-' . $o->get_status(), $k ); ?>><?php echo esc_html( Shokher_Stages::bn_status( substr( $k, 3 ) ) ); ?></option>
 								<?php endforeach; ?>
 							</select>
 						</td>
@@ -705,15 +707,7 @@ final class Shokher_Manager {
 	}
 
 	private static function tab_orders() {
-		$status = isset( $_GET['status'] ) ? sanitize_key( wp_unslash( $_GET['status'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
-		$filters = array( '' => 'সব', 'processing' => 'নতুন', 'on-hold' => 'যাচাই বাকি', 'pending' => 'পেমেন্ট বাকি', 'completed' => 'সম্পন্ন', 'cancelled' => 'বাতিল' );
-		echo '<div class="skm-chips">';
-		foreach ( $filters as $k => $label ) {
-			printf( '<a class="%s" href="%s">%s</a>', $k === $status ? 'is-active' : '', esc_url( self::url( 'orders', $k ? array( 'status' => $k ) : array() ) ), esc_html( $label ) );
-		}
-		echo '</div>';
-		echo '<p class="skm-muted">স্ট্যাটাস বদলালে সাথে সাথে সেভ হয় আর কাস্টমারকে ইমেইল যায় (যদি ইমেইল দেওয়া থাকে)। bKash/Nagad অর্ডারে TrxID মিলিয়ে তারপর "নতুন / প্রসেসিং" করুন।</p>';
-		self::orders_table( 50, $status );
+		Shokher_Stages::render_board();
 	}
 
 	public static function ajax_order_status() {

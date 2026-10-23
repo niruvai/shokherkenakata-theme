@@ -81,3 +81,35 @@ jQuery(function ($) {
       .always(function () { $s.prop('disabled', false); });
   });
 });
+
+/* ---------- Order stage cards ---------- */
+jQuery(function ($) {
+  'use strict';
+  function send($card, extra) {
+    var data = $.extend({ action: 'skm_order_update', nonce: SKM.nonce, id: $card.data('id') }, extra || {});
+    $card.find('[data-f]').each(function () { data[$(this).data('f')] = $(this).val(); });
+    $card.addClass('is-busy');
+    $.post(SKM.ajax, data).done(function (r) {
+      if (r && r.success && r.data && r.data.html) {
+        var $n = $(r.data.html).addClass('is-saved');
+        $card.replaceWith($n);
+        setTimeout(function () { $n.removeClass('is-saved'); }, 1500);
+      } else {
+        $card.removeClass('is-busy'); alert('সেভ হয়নি, আবার চেষ্টা করুন।');
+      }
+    }).fail(function () { $card.removeClass('is-busy'); alert('সেভ হয়নি, আবার চেষ্টা করুন।'); });
+  }
+  $(document).on('click', '[data-skm-o-status]', function () {
+    var c = $(this).data('confirm');
+    if (c && !window.confirm(c)) return;
+    send($(this).closest('.skm-ocard'), { status: $(this).data('skm-o-status') });
+  });
+  $(document).on('change', '[data-skm-o-select]', function () {
+    var v = $(this).val(); if (!v) return;
+    send($(this).closest('.skm-ocard'), { status: v });
+  });
+  $(document).on('click', '[data-skm-o-save]', function () { send($(this).closest('.skm-ocard')); });
+  $(document).on('keydown', '.skm-oship .skm-in', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); send($(this).closest('.skm-ocard')); }
+  });
+});
