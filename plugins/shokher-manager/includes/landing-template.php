@@ -13,8 +13,7 @@ $old = $d['old'];
 if ( ! $old && $opt ) {
 	$old = (float) $opt[0]['regular'] > (float) $opt[0]['price'] ? (float) $opt[0]['regular'] : 0;
 }
-$states   = WC()->countries->get_states( 'BD' );
-$delivery = Shokher_Landing::delivery_table();
+$areas    = Shokher_Landing::areas();
 $hotline  = function_exists( 'shokher_opt' ) ? shokher_opt( 'hotline' ) : '';
 $wa       = function_exists( 'shokher_opt' ) ? shokher_opt( 'whatsapp' ) : '';
 $cur      = html_entity_decode( get_woocommerce_currency_symbol() );
@@ -105,6 +104,13 @@ body.skl-body{margin:0;background:var(--bg);font-family:"Hind Siliguri",Poppins,
 .skl-sum .tot{border-top:2px dashed #ddd;margin-top:6px;padding-top:8px;font-size:20px;font-weight:800}
 .skl-sum .tot b{color:var(--r);font-family:Poppins}
 .skl-submit{width:100%;animation:none}
+.skl-areas{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.skl-area{display:flex;align-items:center;gap:8px;border:2px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer;background:#fff;font-weight:600}
+.skl-area input{width:18px;height:18px;accent-color:var(--k)}
+.skl-area b{display:block;color:var(--r);font-family:Poppins}
+.skl-area.is-on{border-color:var(--k);background:#fffbea}
+.skl-f.is-err input,.skl-f.is-err textarea{border-color:var(--r)!important;background:#fff5f5}
+.skl-qty button{color:var(--k)}
 .skl-msg{display:none;margin-top:10px;padding:10px 12px;border-radius:10px;background:#fde2e1;color:#b91c1c;font-weight:600}
 .skl-cod{text-align:center;color:#555;font-size:15px;margin-top:8px}
 .skl-hp{position:absolute;left:-9999px}
@@ -236,13 +242,13 @@ body.skl-body{margin:0;background:var(--bg);font-family:"Hind Siliguri",Poppins,
 				<div>
 					<label class="skl-f"><span>আপনার নাম *</span><input type="text" name="name" autocomplete="name" required placeholder="আপনার নাম লিখুন"></label>
 					<label class="skl-f"><span>মোবাইল নম্বর *</span><input type="tel" name="phone" autocomplete="tel" inputmode="numeric" required placeholder="01XXXXXXXXX"></label>
-					<label class="skl-f"><span>জেলা *</span>
-						<select name="district" required>
-							<option value="">— জেলা বাছাই করুন —</option>
-							<?php foreach ( (array) $states as $code => $nm ) : ?><option value="<?php echo esc_attr( $code ); ?>"><?php echo esc_html( $nm ); ?></option><?php endforeach; ?>
-						</select>
-					</label>
-					<label class="skl-f"><span>সম্পূর্ণ ঠিকানা *</span><textarea name="address" rows="2" required placeholder="বাসা/রোড, এলাকা, থানা"></textarea></label>
+					<label class="skl-f"><span>সম্পূর্ণ ঠিকানা *</span><textarea name="address" rows="2" required placeholder="বাসা/রোড, এলাকা, থানা, জেলা"></textarea></label>
+					<div class="skl-f"><span>ডেলিভারি এলাকা</span>
+						<div class="skl-areas">
+							<label class="skl-area"><input type="radio" name="area" value="inside"> <span>ঢাকার ভিতরে<b><?php echo esc_html( $fmt( $areas['inside']['cost'] ) ); ?></b></span></label>
+							<label class="skl-area is-on"><input type="radio" name="area" value="outside" checked> <span>ঢাকার বাইরে<b><?php echo esc_html( $fmt( $areas['outside']['cost'] ) ); ?></b></span></label>
+						</div>
+					</div>
 					<label class="skl-f"><span>কিছু বলার থাকলে (ঐচ্ছিক)</span><input type="text" name="note"></label>
 					<button type="submit" class="skl-cta skl-submit">✅ অর্ডার কনফার্ম করুন</button>
 					<div class="skl-msg" role="alert"></div>
@@ -265,47 +271,60 @@ body.skl-body{margin:0;background:var(--bg);font-family:"Hind Siliguri",Poppins,
 
 <?php if ( $p && $opt ) : ?>
 <div class="skl-sticky">
-	<a class="skl-cta" href="#order">🛒 অর্ডার করুন – <?php echo esc_html( $fmt( $min ) ); ?></a>
+	<button type="button" class="skl-cta" id="skl-go">🛒 অর্ডার করুন – <span data-sum="go"><?php echo esc_html( $fmt( $min ) ); ?></span></button>
 	<?php if ( $wa ) : ?><a class="wa" href="https://wa.me/<?php echo esc_attr( preg_replace( '/\D/', '', $wa ) ); ?>" target="_blank" rel="noopener" aria-label="WhatsApp">💬</a><?php endif; ?>
 </div>
 <script>
 (function(){
   var f=document.getElementById('skl-form'); if(!f) return;
-  var ship=<?php echo wp_json_encode( $delivery ); ?>, cur=<?php echo wp_json_encode( $cur ); ?>, pid=<?php echo (int) $p->get_id(); ?>;
-  var msg=f.querySelector('.skl-msg'), btn=f.querySelector('.skl-submit'), qty=f.querySelector('[name=qty]'), dist=f.querySelector('[name=district]');
+  var areas=<?php echo wp_json_encode( $areas ); ?>, cur=<?php echo wp_json_encode( $cur ); ?>, pid=<?php echo (int) $p->get_id(); ?>;
+  var msg=f.querySelector('.skl-msg'), btn=f.querySelector('.skl-submit'), qty=f.querySelector('[name=qty]'), go=document.getElementById('skl-go'), busy=false;
   function fm(n){return cur+Math.round(n).toLocaleString('en-IN');}
   function price(){var r=f.querySelector('[name=option]:checked');return r?parseFloat(r.getAttribute('data-price'))||0:0;}
+  function area(){var r=f.querySelector('[name=area]:checked');return r?r.value:'outside';}
   function calc(){
     var q=Math.max(1,Math.min(20,parseInt(qty.value,10)||1)); qty.value=q;
-    var sub=price()*q, s=ship[dist.value], c=null;
-    if(s){ c=(s.free&&s.free>0&&sub>=s.free)?0:s.cost; }
-    f.querySelector('[data-sum=sub]').textContent=fm(sub);
-    f.querySelector('[data-sum=ship]').textContent=c===null?'জেলা বাছাই করুন':(c===0?'ফ্রি':fm(c));
-    f.querySelector('[data-sum=tot]').textContent=fm(sub+(c||0));
-    return sub+(c||0);
+    var sub=price()*q, s=areas[area()], c=s?((s.free&&s.free>0&&sub>=s.free)?0:s.cost):0;
+    f.querySelector('[data-sum=sub]').textContent=fm(sub)+(q>1?' ('+q+'টি)':'');
+    f.querySelector('[data-sum=ship]').textContent=c===0?'ফ্রি':fm(c);
+    f.querySelector('[data-sum=tot]').textContent=fm(sub+c);
+    var g=document.querySelector('[data-sum=go]'); if(g) g.textContent=fm(sub+c);
+    if(!busy) btn.textContent='✅ অর্ডার কনফার্ম করুন – '+fm(sub+c);
+    return sub+c;
+  }
+  function phone(){return (f.phone.value||'').replace(/\D/g,'').replace(/^880/,'0').replace(/^88/,'');}
+  function check(){
+    f.querySelectorAll('.skl-f.is-err').forEach(function(el){el.classList.remove('is-err');});
+    var bad=null, text='';
+    if(!f.name.value.trim()){bad=f.name;text='আপনার নাম লিখুন।';}
+    else if(!/^01[3-9]\d{8}$/.test(phone())){bad=f.phone;text='সঠিক ১১ সংখ্যার মোবাইল নম্বর দিন (যেমন 017XXXXXXXX)।';}
+    else if(!f.address.value.trim()){bad=f.address;text='ঠিকানা লিখুন।';}
+    if(bad){ bad.closest('.skl-f').classList.add('is-err'); msg.textContent=text; msg.style.display='block'; bad.scrollIntoView({behavior:'smooth',block:'center'}); setTimeout(function(){bad.focus({preventScroll:true});},350); return false; }
+    msg.style.display='none'; return true;
+  }
+  function send(){
+    if(busy||!check()) return;
+    busy=true; btn.disabled=true; btn.textContent='অর্ডার হচ্ছে…'; if(go){go.disabled=true;go.textContent='অর্ডার হচ্ছে…';}
+    var fd=new FormData(f); fd.set('phone',phone());
+    function fail(t){ busy=false; msg.textContent=t; msg.style.display='block'; btn.disabled=false; if(go){go.disabled=false;go.innerHTML='🛒 অর্ডার করুন – <span data-sum="go"></span>';} calc(); msg.scrollIntoView({behavior:'smooth',block:'center'}); }
+    fetch(<?php echo wp_json_encode( admin_url( 'admin-ajax.php' ) ); ?>,{method:'POST',body:fd,credentials:'same-origin'}).then(function(r){return r.json();}).then(function(r){
+      if(r&&r.success){ window.location.href=r.data.redirect; }
+      else{ fail((r&&r.data&&r.data.message)||'অর্ডার নেওয়া যায়নি, আবার চেষ্টা করুন।'); }
+    }).catch(function(){ fail('ইন্টারনেট সমস্যা, আবার চেষ্টা করুন।'); });
   }
   f.addEventListener('change',function(e){
     if(e.target.name==='option'){f.querySelectorAll('.skl-opt').forEach(function(l){l.classList.toggle('is-on',l.contains(e.target));});}
+    if(e.target.name==='area'){f.querySelectorAll('.skl-area').forEach(function(l){l.classList.toggle('is-on',l.contains(e.target));});}
     calc();
   });
-  qty.addEventListener('input',calc);
+  f.addEventListener('input',function(e){ var w=e.target.closest('.skl-f'); if(w) w.classList.remove('is-err'); if(e.target===qty) calc(); });
   f.querySelectorAll('[data-q]').forEach(function(b){b.addEventListener('click',function(){qty.value=(parseInt(qty.value,10)||1)+parseInt(b.getAttribute('data-q'),10);calc();});});
+  f.addEventListener('submit',function(e){e.preventDefault();send();});
+  if(go) go.addEventListener('click',send);
   calc();
   var ic=false;
   f.addEventListener('focusin',function(){ if(!ic&&window.fbq){ic=true;fbq('track','InitiateCheckout',{content_ids:[String(pid)],content_type:'product',value:calc(),currency:'BDT'});} });
   if(window.fbq){ fbq('track','ViewContent',{content_ids:[String(pid)],content_type:'product',value:price(),currency:'BDT'}); }
-  f.addEventListener('submit',function(e){
-    e.preventDefault(); msg.style.display='none';
-    var ph=(f.phone.value||'').replace(/\D/g,'').replace(/^880/,'0').replace(/^88/,'');
-    if(!f.name.value.trim()||!f.address.value.trim()||!dist.value){msg.textContent='নাম, জেলা আর ঠিকানা দিন।';msg.style.display='block';return;}
-    if(!/^01[3-9]\d{8}$/.test(ph)){msg.textContent='সঠিক ১১ সংখ্যার মোবাইল নম্বর দিন (যেমন 017XXXXXXXX)।';msg.style.display='block';f.phone.focus();return;}
-    btn.disabled=true; btn.textContent='অর্ডার হচ্ছে…';
-    var fd=new FormData(f); fd.set('phone',ph);
-    fetch(<?php echo wp_json_encode( admin_url( 'admin-ajax.php' ) ); ?>,{method:'POST',body:fd,credentials:'same-origin'}).then(function(r){return r.json();}).then(function(r){
-      if(r&&r.success){ window.location.href=r.data.redirect; }
-      else{ msg.textContent=(r&&r.data&&r.data.message)||'অর্ডার নেওয়া যায়নি, আবার চেষ্টা করুন।'; msg.style.display='block'; btn.disabled=false; btn.textContent='✅ অর্ডার কনফার্ম করুন'; }
-    }).catch(function(){ msg.textContent='ইন্টারনেট সমস্যা, আবার চেষ্টা করুন।'; msg.style.display='block'; btn.disabled=false; btn.textContent='✅ অর্ডার কনফার্ম করুন'; });
-  });
 })();
 </script>
 <?php endif; ?>

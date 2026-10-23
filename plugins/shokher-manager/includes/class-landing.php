@@ -113,6 +113,23 @@ final class Shokher_Landing {
 		return $out;
 	}
 
+	/** Two delivery areas used by the landing form: inside / outside Dhaka. */
+	public static function areas() {
+		$t      = self::delivery_table();
+		$inside = $t['BD-13'] ?? array( 'cost' => 0, 'free' => null, 'zone' => 'Inside Dhaka' );
+		$out    = null;
+		foreach ( $t as $code => $row ) {
+			if ( 'BD-13' !== $code ) {
+				$out = $row;
+				break;
+			}
+		}
+		return array(
+			'inside'  => $inside,
+			'outside' => $out ? $out : $inside,
+		);
+	}
+
 	/* ------------------------------------------------------------------ */
 	/* Frontend                                                            */
 	/* ------------------------------------------------------------------ */
@@ -141,14 +158,14 @@ final class Shokher_Landing {
 		$name  = isset( $_POST['name'] ) ? sanitize_text_field( wp_unslash( $_POST['name'] ) ) : '';
 		$phone = isset( $_POST['phone'] ) ? preg_replace( '/\D/', '', wp_unslash( $_POST['phone'] ) ) : '';
 		$addr  = isset( $_POST['address'] ) ? sanitize_text_field( wp_unslash( $_POST['address'] ) ) : '';
-		$state = isset( $_POST['district'] ) ? sanitize_text_field( wp_unslash( $_POST['district'] ) ) : '';
+		$area  = isset( $_POST['area'] ) && 'inside' === $_POST['area'] ? 'inside' : 'outside';
 		$note  = isset( $_POST['note'] ) ? sanitize_textarea_field( wp_unslash( $_POST['note'] ) ) : '';
 		// phpcs:enable
 		if ( 0 === strpos( $phone, '880' ) ) {
 			$phone = substr( $phone, 2 );
 		}
-		if ( ! $name || ! $addr || ! $state ) {
-			$err( 'নাম, ঠিকানা আর জেলা দিন।' );
+		if ( ! $name || ! $addr ) {
+			$err( 'নাম আর ঠিকানা দিন।' );
 		}
 		if ( ! preg_match( '/^01[3-9]\d{8}$/', $phone ) ) {
 			$err( 'সঠিক ১১ সংখ্যার মোবাইল নম্বর দিন (যেমন 017XXXXXXXX)।' );
@@ -166,10 +183,6 @@ final class Shokher_Landing {
 		if ( $item->managing_stock() && ! $item->has_enough_stock( $qty ) ) {
 			$err( 'দুঃখিত, এত পিস স্টকে নেই।' );
 		}
-		$states = WC()->countries->get_states( 'BD' );
-		if ( ! isset( $states[ $state ] ) ) {
-			$err( 'জেলা বাছাই করুন।' );
-		}
 		$lock = 'skm_lo_' . md5( $phone . '|' . $opt );
 		if ( get_transient( $lock ) ) {
 			$err( 'এই নম্বর থেকে একটু আগেই অর্ডার হয়েছে। আমরা শীঘ্রই কল করবো।' );
@@ -185,8 +198,8 @@ final class Shokher_Landing {
 			'first_name' => $parts[0],
 			'last_name'  => $parts[1] ?? '',
 			'address_1'  => $addr,
-			'city'       => $states[ $state ],
-			'state'      => $state,
+			'city'       => 'inside' === $area ? 'Dhaka' : '',
+			'state'      => 'inside' === $area ? 'BD-13' : '',
 			'country'    => 'BD',
 			'phone'      => $phone,
 		);
@@ -195,8 +208,8 @@ final class Shokher_Landing {
 		$order->set_address( $addr_fields, 'shipping' );
 		$order->set_customer_note( $note );
 
-		$table    = self::delivery_table();
-		$row      = $table[ $state ] ?? array( 'cost' => 0, 'free' => null, 'zone' => '' );
+		$areas    = self::areas();
+		$row      = $areas[ $area ];
 		$subtotal = (float) $item->get_price() * $qty;
 		$is_free  = null !== $row['free'] && $row['free'] > 0 && $subtotal >= $row['free'];
 		$ship     = new WC_Order_Item_Shipping();
