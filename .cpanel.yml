@@ -5,4 +5,3 @@ deployment:
     - /bin/mkdir -p $DEPLOYPATH
     - /bin/cp -R plugins/shokher-manager/. $DEPLOYPATH
     - /bin/chmod 755 $DEPLOYPATH $DEPLOYPATH/assets $DEPLOYPATH/includes
-    - /bin/chmod 644 $DEPLOYPATH/shokher-manager.php $DEPLOYPATH/assets/admin.css $DEPLOYPATH/assets/admin.js $DEPLOYPATH/includes/class-stages.php

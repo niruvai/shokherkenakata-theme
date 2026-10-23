@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Shokher Shop Manager
  * Description: সহজ দোকান ম্যানেজার – এক পেজে প্রোডাক্ট আপলোড, দাম/অফার/স্টক এডিট, অর্ডার দেখা ও স্ট্যাটাস বদল, ডেলিভারি চার্জ ও ফ্রি ডেলিভারি অফার।
- * Version: 1.1.0
+ * Version: 1.2.0
  * Author: Shokher Kenakata
  * Requires Plugins: woocommerce
  * Requires at least: 6.3
@@ -12,11 +12,12 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'SKM_VER', '1.1.0' );
+define( 'SKM_VER', '1.2.0' );
 define( 'SKM_URL', plugin_dir_url( __FILE__ ) );
 define( 'SKM_CAP', 'edit_products' );
 
 require_once __DIR__ . '/includes/class-stages.php';
+require_once __DIR__ . '/includes/class-landing.php';
 
 final class Shokher_Manager {
 
@@ -83,6 +84,7 @@ final class Shokher_Manager {
 		add_submenu_page( self::SLUG, 'নতুন প্রোডাক্ট', '➕ নতুন প্রোডাক্ট', SKM_CAP, self::SLUG . '&tab=add', '__return_null' );
 		add_submenu_page( self::SLUG, 'সব প্রোডাক্ট', 'সব প্রোডাক্ট', SKM_CAP, self::SLUG . '&tab=products', '__return_null' );
 		add_submenu_page( self::SLUG, 'অর্ডার', 'অর্ডার', SKM_CAP, self::SLUG . '&tab=orders', '__return_null' );
+		add_submenu_page( self::SLUG, 'ল্যান্ডিং পেজ', '🎯 ল্যান্ডিং পেজ', SKM_CAP, self::SLUG . '&tab=landing', '__return_null' );
 		add_submenu_page( self::SLUG, 'ডেলিভারি ও অফার', 'ডেলিভারি ও অফার', SKM_CAP, self::SLUG . '&tab=delivery', '__return_null' );
 	}
 
@@ -127,6 +129,7 @@ final class Shokher_Manager {
 			'add'       => '➕ নতুন প্রোডাক্ট',
 			'products'  => 'সব প্রোডাক্ট',
 			'orders'    => 'অর্ডার',
+			'landing'   => '🎯 ল্যান্ডিং পেজ',
 			'delivery'  => 'ডেলিভারি ও অফার',
 		);
 		echo '<div class="wrap skm">';
@@ -150,6 +153,9 @@ final class Shokher_Manager {
 				break;
 			case 'delivery':
 				self::tab_delivery();
+				break;
+			case 'landing':
+				Shokher_Landing::admin_tab();
 				break;
 			default:
 				self::tab_dashboard();
@@ -209,6 +215,7 @@ final class Shokher_Manager {
 				<div class="skm-quick">
 					<a class="skm-btn" href="<?php echo esc_url( self::url( 'add' ) ); ?>">➕ নতুন প্রোডাক্ট যোগ করুন</a>
 					<a class="skm-btn skm-btn-ghost" href="<?php echo esc_url( self::url( 'orders' ) ); ?>">📦 অর্ডার দেখুন</a>
+					<a class="skm-btn skm-btn-ghost" href="<?php echo esc_url( self::url( 'landing' ) ); ?>">🎯 ল্যান্ডিং পেজ</a>
 					<a class="skm-btn skm-btn-ghost" href="<?php echo esc_url( self::url( 'delivery' ) ); ?>">🚚 ডেলিভারি চার্জ / ফ্রি ডেলিভারি</a>
 					<a class="skm-btn skm-btn-ghost" href="<?php echo esc_url( admin_url( 'edit.php?post_type=shop_coupon' ) ); ?>">🏷 কুপন</a>
 					<a class="skm-btn skm-btn-ghost" href="<?php echo esc_url( admin_url( 'admin.php?page=wc-reports' ) ); ?>">📊 সেলস রিপোর্ট</a>
