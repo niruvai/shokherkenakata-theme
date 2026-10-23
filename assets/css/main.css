@@ -398,3 +398,9 @@ html,body{overflow-x:clip}
   .sk-trust-strip>div{gap:8px}
   #wpadminbar .display-name{display:none}
 }
+.single-product div.product>*{min-width:0}
+@media (max-width:900px){
+  .single-product div.product{grid-template-columns:minmax(0,1fr)}
+  .sk-card-btn .button{font-size:13px;padding:8px 6px;white-space:nowrap;gap:5px}
+  .sk-card-btn .button::before{width:15px;height:15px}
+}
