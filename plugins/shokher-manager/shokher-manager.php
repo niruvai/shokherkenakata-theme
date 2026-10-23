@@ -128,7 +128,7 @@ final class Shokher_Manager {
 			'delivery'  => 'ডেলিভারি ও অফার',
 		);
 		echo '<div class="wrap skm">';
-		echo '<div class="skm-head"><h1>🛍 Shokher Shop</h1><a class="skm-btn skm-btn-ghost" href="' . esc_url( home_url( '/' ) ) . '" target="_blank">সাইট দেখুন ↗</a></div>';
+		echo '<div class="skm-head"><h1>🛍 Shokher Shop</h1><a class="skm-btn skm-btn-ghost" href="' . esc_url( home_url( '/' ) ) . '" target="_blank">সাইট দেখুন ↗</a></div><hr class="wp-header-end">';
 		self::notice();
 		echo '<nav class="skm-tabs">';
 		foreach ( $tabs as $k => $label ) {
@@ -191,7 +191,8 @@ final class Shokher_Manager {
 			),
 		) );
 		$low     = array_filter( array_map( 'wc_get_product', $low_ids ) );
-		$total_p = array_sum( (array) wp_count_posts( 'product' ) );
+		$cnt     = wp_count_posts( 'product' );
+		$total_p = (int) $cnt->publish + (int) $cnt->draft + (int) $cnt->private;
 		?>
 		<div class="skm-cards">
 			<div class="skm-card"><span>আজকের অর্ডার</span><b><?php echo (int) $tc; ?></b><small><?php echo wp_kses_post( self::money( $ts ) ); ?></small></div>
