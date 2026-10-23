@@ -82,7 +82,7 @@ body.skl-body{margin:0;background:var(--bg);font-family:"Hind Siliguri",Poppins,
 .skl-faq details[open] summary::after{content:"–"}
 .skl-faq p{margin:8px 0 0;color:#444}
 /* Order form */
-.skl-order{border:3px solid var(--y)}
+.skl-order{border:3px solid var(--y);scroll-margin-top:84px}
 .skl-order h2{margin-bottom:6px}
 .skl-order .skl-note{text-align:center;color:#555;margin:0 0 16px}
 .skl-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
